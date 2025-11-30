@@ -1,78 +1,38 @@
 from pyrogram import Client, filters
-from pyrogram.types import Message
-from pytgcalls import PyTgCalls
-from pytgcalls.types.input_stream import AudioPiped
-import asyncio
-import os
+from .youtube import yt_search
+from .downloader import download_audio
+from .call import pytgcalls, assistant
 
-from config import API_ID, API_HASH, ASSISTANT_SESSION
-from helpers import download_and_prepare_audio
+@Client.on_message(filters.command("play") & filters.group)
+async def play(_, message):
+    query = " ".join(message.command[1:])
+    if not query:
+        return await message.reply("❗ **Song name do!**")
 
-assistant = Client(
-    "assistant",
-    api_id=API_ID,
-    api_hash=API_HASH,
-    session_string=ASSISTANT_SESSION
-)
+    await message.reply("🔍 Searching...")
 
-pytgcalls = PyTgCalls(assistant)
+    url, title = yt_search(query)
+    if not url:
+        return await message.reply("Song nahi mila.")
 
-queues = {}  # {chat_id: [(filepath, title)]}
+    file = download_audio(url)
+    if not file:
+        return await message.reply("Download error aaya.")
 
-def register_music_handlers(bot: Client):
+    await message.reply(f"🎧 Playing: **{title}**")
 
-    @bot.on_message(filters.command("play") & filters.group)
-    async def play_cmd(_, message: Message):
-        chat_id = message.chat.id
-        query = " ".join(message.command[1:])
-
-        if not query:
-            return await message.reply_text("Usage: /play <song>")
-
-        m = await message.reply_text("Downloading…")
-
-        file, title = await asyncio.get_event_loop().run_in_executor(
-            None,
-            lambda: download_and_prepare_audio(query)
+    try:
+        await pytgcalls.join_group_call(
+            message.chat.id,
+            AudioPiped(file)
         )
+    except:
+        await message.reply("Assistant add nahi hai. Pehle usko group me add karo.")
 
-        if chat_id not in queues:
-            queues[chat_id] = []
-
-        queues[chat_id].append((file, title))
-
-        if len(queues[chat_id]) == 1:
-            try:
-                await assistant.start()
-                await pytgcalls.join_group_call(
-                    chat_id,
-                    AudioPiped(file),
-                )
-                await m.edit_text(f"▶️ Playing: **{title}**")
-            except Exception as e:
-                await m.edit_text(f"Assistant Error: {e}")
-        else:
-            await m.edit_text(f"Added to queue: **{title}**")
-
-    @bot.on_message(filters.command("skip"))
-    async def skip_cmd(_, message: Message):
-        chat_id = message.chat.id
-
-        if chat_id not in queues or len(queues[chat_id]) <= 1:
-            return await message.reply_text("Queue empty.")
-
-        queues[chat_id].pop(0)
-        next_file, title = queues[chat_id][0]
-
-        await pytgcalls.change_stream(chat_id, AudioPiped(next_file))
-        await message.reply_text(f"⏭ Skipped. Now playing: **{title}**")
-
-    @bot.on_message(filters.command("stop"))
-    async def stop_cmd(_, message: Message):
-        chat_id = message.chat.id
-        try:
-            await pytgcalls.leave_group_call(chat_id)
-            queues[chat_id] = []
-            await message.reply_text("Stopped.")
-        except:
-            await message.reply_text("Already stopped.")
+@Client.on_message(filters.command("end") & filters.group)
+async def end(_, message):
+    try:
+        await pytgcalls.leave_group_call(message.chat.id)
+        await message.reply("⛔ Stopped.")
+    except:
+        await message.reply("Already stopped.")
