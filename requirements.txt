@@ -9,3 +9,4 @@ aiohttp
 python-dotenv
 openai
 python-telegram-bot==20.5
+pymongo==4.5.0
