@@ -1,38 +1,66 @@
 from pyrogram import Client, filters
-from .youtube import yt_search
-from .downloader import download_audio
-from .call import pytgcalls, assistant
+from pytgcalls import PyTgCalls, idle
+from pytgcalls.types.stream import StreamType
+from pytgcalls.types.input_stream import AudioPiped
+import yt_dlp
+import asyncio
 
-@Client.on_message(filters.command("play") & filters.group)
-async def play(_, message):
-    query = " ".join(message.command[1:])
-    if not query:
-        return await message.reply("❗ **Song name do!**")
+from .config import API_ID, API_HASH, BOT_TOKEN, SESSION
 
-    await message.reply("🔍 Searching...")
+# Bot client
+bot = Client("MusicBot", api_id=API_ID, api_hash=API_HASH, bot_token=BOT_TOKEN)
 
-    url, title = yt_search(query)
-    if not url:
-        return await message.reply("Song nahi mila.")
+# Assistant client (plays music)
+assistant = Client("assistant", api_id=API_ID, api_hash=API_HASH, session_string=SESSION)
 
-    file = download_audio(url)
-    if not file:
-        return await message.reply("Download error aaya.")
+# PyTgCalls
+pytgcalls = PyTgCalls(assistant)
 
-    await message.reply(f"🎧 Playing: **{title}**")
+# ---------------- PLAY ---------------- #
+@bot.on_message(filters.command("play") & filters.group)
+async def play(_, msg):
+    if len(msg.command) < 2:
+        return await msg.reply("🔍 Song ka naam do!\nExample: /play tu hai ke nhi")
+
+    query = msg.text.split(None, 1)[1]
+
+    await msg.reply("🎧 Searching...")
+
+    # YT search + download
+    ydl_opts = {
+        "format": "bestaudio",
+        "noplaylist": True,
+        "quiet": True,
+        "outtmpl": "song.%(ext)s",
+    }
+
+    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+        info = ydl.extract_info(f"ytsearch:{query}", download=True)["entries"][0]
+        url = info["url"]
+
+    await msg.reply(f"▶️ Playing: **{info['title']}**")
 
     try:
         await pytgcalls.join_group_call(
-            message.chat.id,
-            AudioPiped(file)
+            msg.chat.id,
+            AudioPiped(url),
+            stream_type=StreamType().local_stream,
         )
-    except:
-        await message.reply("Assistant add nahi hai. Pehle usko group me add karo.")
+    except Exception as e:
+        await msg.reply(str(e))
 
-@Client.on_message(filters.command("end") & filters.group)
-async def end(_, message):
+
+# ---------------- STOP ---------------- #
+@bot.on_message(filters.command("stop") & filters.group)
+async def stop(_, msg):
     try:
-        await pytgcalls.leave_group_call(message.chat.id)
-        await message.reply("⛔ Stopped.")
+        await pytgcalls.leave_group_call(msg.chat.id)
+        await msg.reply("⏹ Stopped Music")
     except:
-        await message.reply("Already stopped.")
+        await msg.reply("❌ Not playing anything.")
+
+
+# ---------------- SKIP ---------------- #
+@bot.on_message(filters.command("skip") & filters.group)
+async def skip(_, msg):
+    await msg.reply("⏭ Skip command abhi queue bina kaam nahi karega.")
