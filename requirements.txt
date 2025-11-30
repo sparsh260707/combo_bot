@@ -1,7 +1,13 @@
-pyrogram==2.0.106
-tgcrypto==1.2.5
-yt-dlp==2025.11.10
-pymongo==5.3.1
-python-dotenv==1.0.1
-openai==1.9.3
-ffmpeg-python==0.3.0
+ffmpeg-python
+pytube
+lyricsgenius
+py-tgcalls==1.2.9       # Voice chat / Pyrogram v1
+ntgcalls==1.1.2          # Voice chat dependency
+tgcrypto                 # Pyrogram crypto dependency
+git+https://github.com/TheChampu/pyrogram@master
+git+https://github.com/yt-dlp/yt-dlp
+git+https://github.com/joetats/youtube_search@master
+git+https://github.com/alexmercerind/youtube-search-python@main
+git+https://github.com/TheChampu/yt-dlp-youtube-oauth2
+aiofiles
+aiohttp
