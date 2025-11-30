@@ -1,12 +1,19 @@
+# Music
 py-tgcalls==1.2.9
 tgcrypto
-pyrogram==2.0.106
 ffmpeg-python
 pytube
 lyricsgenius
 aiofiles
 aiohttp
+
+# Environment & Bot
 python-dotenv
 openai
 python-telegram-bot==20.5
+
+# Telegram Library
+pyrogram==2.0.106
+
+# Database
 pymongo==4.5.0
