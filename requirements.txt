@@ -1,8 +1,8 @@
-pyrogram
-tgcrypto
-pytgcalls
-yt-dlp
-pymongo
-python-dotenv
-openai
-ffmpeg-python
+pyrogram==2.0.110
+tgcrypto==1.4.2
+pytgcalls==0.3.1
+yt-dlp==2025.11.10
+pymongo==5.3.1
+python-dotenv==1.0.1
+openai==1.9.3
+ffmpeg-python==0.3.0
