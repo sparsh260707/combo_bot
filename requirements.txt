@@ -1,4 +1,3 @@
- Keep this
 py-tgcalls==1.2.9
 tgcrypto
 pyrogram==2.0.106
