@@ -1,13 +1,10 @@
+ Keep this
+py-tgcalls==1.2.9
+tgcrypto
+pyrogram==2.0.106
 ffmpeg-python
 pytube
 lyricsgenius
-py-tgcalls==1.2.9       # Voice chat / Pyrogram v1
-ntgcalls==1.1.2          # Voice chat dependency
-tgcrypto                 # Pyrogram crypto dependency
-git+https://github.com/TheChampu/pyrogram@master
-git+https://github.com/yt-dlp/yt-dlp
-git+https://github.com/joetats/youtube_search@master
-git+https://github.com/alexmercerind/youtube-search-python@main
-git+https://github.com/TheChampu/yt-dlp-youtube-oauth2
 aiofiles
 aiohttp
+...
