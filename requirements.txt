@@ -1,6 +1,5 @@
-pyrogram==2.0.106          # Pyrogram v2 stable
-tgcrypto==1.2.5             # Latest available
-pytgcalls==2.4.2            # Pyrogram v2 compatible
+pyrogram==2.0.106
+tgcrypto==1.2.5
 yt-dlp==2025.11.10
 pymongo==5.3.1
 python-dotenv==1.0.1
