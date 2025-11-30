@@ -6,3 +6,5 @@ pytube
 lyricsgenius
 aiofiles
 aiohttp
+python-dotenv
+openai
