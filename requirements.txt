@@ -6,6 +6,7 @@ pytube
 lyricsgenius
 aiofiles
 aiohttp
+yt-dlp
 
 # Environment & Bot
 python-dotenv
