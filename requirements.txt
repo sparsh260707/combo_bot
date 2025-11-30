@@ -5,3 +5,4 @@ yt-dlp
 pymongo
 python-dotenv
 openai
+ffmpeg-python
