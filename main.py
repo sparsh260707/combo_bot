@@ -26,8 +26,6 @@ from helpers.economy_helper import (
     add_balance, deduct_balance, get_balance,
     is_group_open, set_group_status
 )
-
-from helpers.music_helper import app as music_app, pytgcalls, download_audio, play_music
 from helpers.chat_helper import ai_reply
 
 # -------------------- COMMANDS --------------------
@@ -97,25 +95,6 @@ async def work(update: Update, context: ContextTypes.DEFAULT_TYPE):
     add_balance(user["user_id"], reward)
     await update.message.reply_text(f"💼 You worked and earned {reward} coins!")
 
-# -------------------- MUSIC --------------------
-async def play(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if not context.args:
-        return await update.message.reply_text("❌ Please provide a YouTube URL.")
-    url = context.args[0]
-    msg = await update.message.reply_text("⏳ Downloading audio...")
-    file_path = download_audio(url)
-    await msg.edit_text(f"✅ Audio downloaded!\nUse /join to play in VC.")
-    context.chat_data["last_song"] = file_path
-
-async def join(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    chat_id = update.effective_chat.id
-    if "last_song" not in context.chat_data:
-        return await update.message.reply_text("❌ First use /play with a YouTube URL.")
-    file_path = context.chat_data["last_song"]
-    await update.message.reply_text("🎧 Joining voice chat...")
-    await play_music(chat_id, file_path)
-    await update.message.reply_text("🎶 Now playing in VC!")
-
 # -------------------- CHAT --------------------
 async def chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not context.args:
@@ -145,10 +124,6 @@ async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE):
 
 # -------------------- MAIN --------------------
 def main():
-    # Start Music Client
-    music_app.start()
-    pytgcalls.start()
-
     # Start Telegram Bot
     app = Application.builder().token(BOT_TOKEN).build()
     app.add_error_handler(error_handler)
@@ -194,16 +169,11 @@ def main():
     # Group management
     register_group_management(app)
 
-    # Music commands
-    app.add_handler(CommandHandler("play", play))
-    app.add_handler(CommandHandler("join", join))
-
     # Chat command
     app.add_handler(CommandHandler("chat", chat))
 
     print("🚀 Combo Bot Started Successfully!")
     app.run_polling()
-
 
 if __name__ == "__main__":
     main()
