@@ -28,11 +28,11 @@ from helpers.economy_helper import (
     is_group_open, set_group_status
 )
 
-from helpers.music_helper import app as music_app, pytgcalls, download_audio
+from helpers.music_helper import app as music_app, pytgcalls, download_audio, play_music
 from helpers.chat_helper import ai_reply
 
 # -------------------- IMPORT COMMANDS --------------------
-# Economy Commands
+# (All your economy & fun command imports remain same)
 from economy.commands.start_command import start_command, button_handler
 from economy.commands.group_management import register_group_management
 from economy.commands.economy_guide import economy_guide
@@ -57,11 +57,11 @@ from economy.commands.open_economy import open_economy
 from economy.commands.close_economy import close_economy
 from economy.commands.punch import punch
 
-# Fun Commands
+# Fun
 from economy.commands.hug import hug
 from economy.commands.couple import couple
 
-# Hidden Commands
+# Hidden
 from economy.commands.mine import mine
 from economy.commands.farm import farm
 from economy.commands.crime import crime
@@ -74,22 +74,24 @@ from economy.commands.bank import bank
 from economy.commands.deposit import deposit
 from economy.commands.withdraw import withdraw
 
-# -------------------- ECONOMY FUNCTIONS --------------------
+
+# -------------------- ECONOMY --------------------
 async def balance(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     name = update.effective_user.first_name
+
     if update.message.reply_to_message:
         target = update.message.reply_to_message.from_user
         user_id = target.id
         name = target.first_name
-    user = get_user(user_id)
 
-    # Rank calculation
+    user = get_user(user_id)
     rank_data = list(user_db.find().sort("balance", -1))
     ids = [u["user_id"] for u in rank_data]
     rank = ids.index(user_id) + 1 if user_id in ids else len(ids) + 1
 
     status = "☠️ Dead" if user.get("killed") else "Alive"
+
     await update.message.reply_text(
         f"👤 𝐍𝐚𝐦𝐞: {name}\n"
         f"💰 𝐁𝐚𝐥𝐚𝐧𝐜𝐞: ${user['balance']}\n"
@@ -98,65 +100,86 @@ async def balance(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"⚔️ 𝐊𝐢𝐥𝐥𝐬: {user['kills']}"
     )
 
-async def work(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user = get_user(update.effective_user.id)
-    reward = 200
-    add_balance(user["user_id"], reward)
-    await update.message.reply_text(f"💼 You worked and earned {reward} coins!")
 
-# -------------------- MUSIC FUNCTIONS --------------------
+# -------------------- MUSIC SYSTEM --------------------
 async def play(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not context.args:
-        return await update.message.reply_text("❌ Please provide a YouTube URL or query.")
+        return await update.message.reply_text("❌ Please provide a YouTube URL.")
+
     url = context.args[0]
     msg = await update.message.reply_text("⏳ Downloading audio...")
     file_path = download_audio(url)
-    await msg.edit_text(f"✅ Audio downloaded: {file_path}\nUse /join to play in group.")
+    await msg.edit_text(f"✅ Audio downloaded!\nUse /join to play in VC.")
 
-# -------------------- CHAT FUNCTIONS --------------------
+    context.chat_data["last_song"] = file_path
+
+
+async def join(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    chat_id = update.effective_chat.id
+
+    if "last_song" not in context.chat_data:
+        return await update.message.reply_text("❌ First use /play with a YouTube URL.")
+
+    file_path = context.chat_data["last_song"]
+
+    await update.message.reply_text("🎧 Joining voice chat...")
+    await play_music(chat_id, file_path)
+
+    await update.message.reply_text("🎶 Now playing in VC!")
+
+
+# -------------------- CHATGPT --------------------
 async def chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not context.args:
-        return await update.message.reply_text("❌ Please provide a message to chat.")
+        return await update.message.reply_text("❌ Please provide a message.")
     user_text = " ".join(context.args)
     reply = ai_reply(user_text)
     await update.message.reply_text(reply)
 
-# -------------------- RESTART BOT --------------------
+
+# -------------------- AUTH --------------------
 async def test_restart(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id != OWNER_ID:
         return await update.message.reply_text("⛔ You are not authorized.")
     await update.message.reply_text("🔄 Restarting bot...")
     os._exit(1)
 
-# -------------------- TRACK GROUP USERS --------------------
+
+# -------------------- TRACK USERS --------------------
 async def track_users(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat = update.effective_chat
     if chat.type in ["group", "supergroup"]:
         add_group_id(chat.id)
 
-# -------------------- ERROR HANDLER --------------------
+
+# -------------------- ERROR --------------------
 async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE):
     print(f"⚠️ Error: {context.error}")
     if isinstance(update, Update) and update.effective_message:
         await update.effective_message.reply_text("❌ Something went wrong!")
 
+
 # -------------------- MAIN --------------------
 def main():
-    # Telegram Bot App
+    # Start Music Client (PYROGRAM)
+    music_app.start()
+    pytgcalls.start()
+
+    # Start Telegram Bot
     app = Application.builder().token(BOT_TOKEN).build()
     app.add_error_handler(error_handler)
 
-    # Track users in groups
+    # Track users
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, track_users))
 
-    # Start
+    # START
     app.add_handler(CommandHandler("start", start_command))
     app.add_handler(CallbackQueryHandler(button_handler))
 
     # Restart
     app.add_handler(CommandHandler("test", test_restart))
 
-    # Economy commands
+    # Economy Commands
     economy_commands = [
         ("balance", balance), ("work", work), ("economy", economy_guide),
         ("transfer", transfer_balance), ("claim", claim), ("own", own),
@@ -169,7 +192,7 @@ def main():
     for cmd, handler in economy_commands:
         app.add_handler(CommandHandler(cmd, handler))
 
-    # Hidden commands
+    # Hidden
     hidden_cmds = [
         ("mine", mine), ("farm", farm), ("crime", crime), ("heal", heal),
         ("shop", shop), ("buy", buy), ("sell", sell),
@@ -179,7 +202,7 @@ def main():
     for cmd, handler in hidden_cmds:
         app.add_handler(CommandHandler(cmd, handler))
 
-    # Fun commands
+    # Fun
     fun_commands = [("punch", punch), ("hug", hug), ("couple", couple)]
     for cmd, handler in fun_commands:
         app.add_handler(CommandHandler(cmd, handler))
@@ -187,14 +210,16 @@ def main():
     # Group management
     register_group_management(app)
 
-    # Music commands
+    # MUSIC COMMANDS
     app.add_handler(CommandHandler("play", play))
+    app.add_handler(CommandHandler("join", join))
 
-    # Chat command
+    # CHATGPT
     app.add_handler(CommandHandler("chat", chat))
 
     print("🚀 Combo Bot Started Successfully!")
     app.run_polling()
+
 
 if __name__ == "__main__":
     main()
