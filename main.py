@@ -1,4 +1,3 @@
-# main.py
 import os
 from dotenv import load_dotenv
 from telegram import Update
@@ -16,22 +15,22 @@ load_dotenv()
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 OWNER_ID = int(os.getenv("OWNER_ID", 0))
 MONGO_URI = os.getenv("MONGO_URI")
+API_ID = int(os.getenv("API_ID", 0))
+API_HASH = os.getenv("API_HASH")
+SESSION_STRING = os.getenv("SESSION_STRING", "")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
 # -------------------- HELPERS --------------------
 from helpers.economy_helper import (
-    get_user, user_db, add_group_id,
+    get_user, user_db, add_group_id, users, groups,
     add_balance, deduct_balance, get_balance,
     is_group_open, set_group_status
 )
 
-# Music (Render-safe: ONLY downloader)
-from helpers.music_helper import download_audio, play_music
-
-# AI Chat
+from helpers.music_helper import app as music_app, pytgcalls, download_audio, play_music
 from helpers.chat_helper import ai_reply
 
-# -------------------- IMPORT COMMANDS --------------------
+# -------------------- COMMANDS --------------------
 from economy.commands.start_command import start_command, button_handler
 from economy.commands.group_management import register_group_management
 from economy.commands.economy_guide import economy_guide
@@ -54,12 +53,8 @@ from economy.commands.revive import revive
 from economy.commands.open_economy import open_economy
 from economy.commands.close_economy import close_economy
 from economy.commands.punch import punch
-
-# Fun
 from economy.commands.hug import hug
 from economy.commands.couple import couple
-
-# Hidden
 from economy.commands.mine import mine
 from economy.commands.farm import farm
 from economy.commands.crime import crime
@@ -86,7 +81,6 @@ async def balance(update: Update, context: ContextTypes.DEFAULT_TYPE):
     rank_data = list(user_db.find().sort("balance", -1))
     ids = [u["user_id"] for u in rank_data]
     rank = ids.index(user_id) + 1 if user_id in ids else len(ids) + 1
-
     status = "☠️ Dead" if user.get("killed") else "Alive"
 
     await update.message.reply_text(
@@ -94,29 +88,35 @@ async def balance(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"💰 𝐁𝐚𝐥𝐚𝐧𝐜𝐞: ${user['balance']}\n"
         f"🏆 𝐆𝐥𝐨𝐛𝐚𝐥 𝐑𝐚𝐧𝐤: #{rank}\n"
         f"❤️ 𝐒𝐭𝐚𝐭𝐮𝐬: {status}\n"
-        f"⚔️ 𝐊𝐢𝐥𝐥𝐬: {user['kills']}"
+        f"⚔️ 𝐊𝐢𝐥𝐥s: {user['kills']}"
     )
 
-# -------------------- MUSIC SYSTEM (DOWNLOAD ONLY) --------------------
+async def work(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user = get_user(update.effective_user.id)
+    reward = 200
+    add_balance(user["user_id"], reward)
+    await update.message.reply_text(f"💼 You worked and earned {reward} coins!")
+
+# -------------------- MUSIC --------------------
 async def play(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not context.args:
         return await update.message.reply_text("❌ Please provide a YouTube URL.")
-
     url = context.args[0]
     msg = await update.message.reply_text("⏳ Downloading audio...")
     file_path = download_audio(url)
-    await msg.edit_text(f"✅ Audio downloaded!\n📁 File saved at: {file_path}")
-
+    await msg.edit_text(f"✅ Audio downloaded!\nUse /join to play in VC.")
     context.chat_data["last_song"] = file_path
 
 async def join(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    return await update.message.reply_text(
-        "❌ Voice Chat music is disabled on Render.\n"
-        "👉 Only download works (/play URL)"
-    )
+    chat_id = update.effective_chat.id
+    if "last_song" not in context.chat_data:
+        return await update.message.reply_text("❌ First use /play with a YouTube URL.")
+    file_path = context.chat_data["last_song"]
+    await update.message.reply_text("🎧 Joining voice chat...")
+    await play_music(chat_id, file_path)
+    await update.message.reply_text("🎶 Now playing in VC!")
 
-
-# -------------------- CHATGPT --------------------
+# -------------------- CHAT --------------------
 async def chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not context.args:
         return await update.message.reply_text("❌ Please provide a message.")
@@ -137,7 +137,7 @@ async def track_users(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if chat.type in ["group", "supergroup"]:
         add_group_id(chat.id)
 
-# -------------------- ERROR --------------------
+# -------------------- ERROR HANDLER --------------------
 async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE):
     print(f"⚠️ Error: {context.error}")
     if isinstance(update, Update) and update.effective_message:
@@ -145,6 +145,11 @@ async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE):
 
 # -------------------- MAIN --------------------
 def main():
+    # Start Music Client
+    music_app.start()
+    pytgcalls.start()
+
+    # Start Telegram Bot
     app = Application.builder().token(BOT_TOKEN).build()
     app.add_error_handler(error_handler)
 
@@ -171,7 +176,7 @@ def main():
     for cmd, handler in economy_commands:
         app.add_handler(CommandHandler(cmd, handler))
 
-    # Hidden
+    # Hidden Commands
     hidden_cmds = [
         ("mine", mine), ("farm", farm), ("crime", crime), ("heal", heal),
         ("shop", shop), ("buy", buy), ("sell", sell),
@@ -181,7 +186,7 @@ def main():
     for cmd, handler in hidden_cmds:
         app.add_handler(CommandHandler(cmd, handler))
 
-    # Fun
+    # Fun Commands
     fun_commands = [("punch", punch), ("hug", hug), ("couple", couple)]
     for cmd, handler in fun_commands:
         app.add_handler(CommandHandler(cmd, handler))
@@ -189,15 +194,16 @@ def main():
     # Group management
     register_group_management(app)
 
-    # Music (download only)
+    # Music commands
     app.add_handler(CommandHandler("play", play))
     app.add_handler(CommandHandler("join", join))
 
-    # CHATGPT
+    # Chat command
     app.add_handler(CommandHandler("chat", chat))
 
     print("🚀 Combo Bot Started Successfully!")
     app.run_polling()
+
 
 if __name__ == "__main__":
     main()
