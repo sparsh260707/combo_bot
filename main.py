@@ -1,3 +1,4 @@
+# main.py
 import os
 from dotenv import load_dotenv
 from telegram import Update
@@ -15,9 +16,6 @@ load_dotenv()
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 OWNER_ID = int(os.getenv("OWNER_ID", 0))
 MONGO_URI = os.getenv("MONGO_URI")
-API_ID = int(os.getenv("API_ID", 0))
-API_HASH = os.getenv("API_HASH")
-SESSION_STRING = os.getenv("SESSION_STRING", "")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
 # -------------------- HELPERS --------------------
