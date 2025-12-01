@@ -8,7 +8,6 @@ load_dotenv()
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 openai.api_key = OPENAI_API_KEY
 
-# ----------------- Chat Functions -----------------
 def ai_reply(prompt: str, model: str = "gpt-3.5-turbo"):
     """Get AI response using OpenAI chat model."""
     try:
