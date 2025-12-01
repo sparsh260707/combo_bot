@@ -15,9 +15,9 @@ user_db = db["users"]
 group_db = db["groups"]
 couples_db = db["couples"]
 
-# ----------------- Runtime sets -----------------
-users = set()    # DM me start karne wale users
-groups = set()   # jaha bot added hai
+# ----------------- Runtime dicts -----------------
+users = {}    # DM me start karne wale users
+groups = {}   # jaha bot added hai
 
 # ----------------- User Functions -----------------
 def get_user(user_id: int):
@@ -70,7 +70,7 @@ def set_group_status(chat_id: int, status: bool):
 
 def add_group_id(chat_id: int):
     """Track which groups bot is added to."""
-    groups.add(chat_id)
+    groups[chat_id] = True
 
 # ----------------- Utility Functions -----------------
 def random_percentage():
