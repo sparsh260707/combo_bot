@@ -1,17 +1,11 @@
 pyrogram==2.0.106
 tgcrypto
-
-# Working PyTgCalls (NOT py-tgcalls)
-pytgcalls==3.0.0.dev24
-ntgcalls==1.1.0
-
+pytgcalls==3.0.0.dev23
 ffmpeg-python
-pytube
-lyricsgenius
-aiofiles
-aiohttp
 yt-dlp
+aiohttp
+aiofiles
+pymongo==4.5.0
 python-dotenv
 openai
 python-telegram-bot==20.5
-pymongo==4.5.0
