@@ -1,7 +1,8 @@
 import os
 import yt_dlp
-from pytgcalls import PyTgCalls
 from pyrogram import Client
+from pytgcalls import PyTgCalls
+from pytgcalls.types import AudioPiped
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -27,10 +28,10 @@ else:
         api_hash=API_HASH
     )
 
+# ----------------- PyTgCalls -----------------
 pytgcalls = PyTgCalls(app)
 
-
-# ----------------- Downloader -----------------
+# ----------------- Download -----------------
 def download_audio(url: str):
     ydl_opts = {
         "format": "bestaudio/best",
@@ -40,10 +41,9 @@ def download_audio(url: str):
         info = ydl.extract_info(url, download=True)
         return ydl.prepare_filename(info)
 
-
-# ----------------- Play Music -----------------
+# ----------------- Play -----------------
 async def play_music(chat_id: int, file_path: str):
     await pytgcalls.join_group_call(
         chat_id,
-        PyTgCalls.stream_local(file_path)
+        AudioPiped(file_path)
     )
