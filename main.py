@@ -16,27 +16,25 @@ load_dotenv()
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 OWNER_ID = int(os.getenv("OWNER_ID", 0))
 MONGO_URI = os.getenv("MONGO_URI")
-API_ID = int(os.getenv("API_ID", 0))
-API_HASH = os.getenv("API_HASH")
-SESSION_STRING = os.getenv("SESSION_STRING", "")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
 # -------------------- HELPERS --------------------
 from helpers.economy_helper import (
-    get_user, user_db, add_group_id, users, groups,
+    get_user, user_db, add_group_id,
     add_balance, deduct_balance, get_balance,
     is_group_open, set_group_status
 )
 
-from helpers.music_helper import app as music_app, pytgcalls, download_audio, play_music
+# Music (Render-safe: ONLY downloader)
+from helpers.music_helper import download_audio, play_music
+
+# AI Chat
 from helpers.chat_helper import ai_reply
 
 # -------------------- IMPORT COMMANDS --------------------
-# (All your economy & fun command imports remain same)
 from economy.commands.start_command import start_command, button_handler
 from economy.commands.group_management import register_group_management
 from economy.commands.economy_guide import economy_guide
-from economy.commands.help_command import help_command
 from economy.commands.transfer_balance import transfer_balance
 from economy.commands.claim import claim
 from economy.commands.own import own
@@ -74,7 +72,6 @@ from economy.commands.bank import bank
 from economy.commands.deposit import deposit
 from economy.commands.withdraw import withdraw
 
-
 # -------------------- ECONOMY --------------------
 async def balance(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
@@ -100,8 +97,7 @@ async def balance(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"⚔️ 𝐊𝐢𝐥𝐥𝐬: {user['kills']}"
     )
 
-
-# -------------------- MUSIC SYSTEM --------------------
+# -------------------- MUSIC SYSTEM (DOWNLOAD ONLY) --------------------
 async def play(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not context.args:
         return await update.message.reply_text("❌ Please provide a YouTube URL.")
@@ -109,23 +105,15 @@ async def play(update: Update, context: ContextTypes.DEFAULT_TYPE):
     url = context.args[0]
     msg = await update.message.reply_text("⏳ Downloading audio...")
     file_path = download_audio(url)
-    await msg.edit_text(f"✅ Audio downloaded!\nUse /join to play in VC.")
+    await msg.edit_text(f"✅ Audio downloaded!\n📁 File saved at: {file_path}")
 
     context.chat_data["last_song"] = file_path
 
-
 async def join(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    chat_id = update.effective_chat.id
-
-    if "last_song" not in context.chat_data:
-        return await update.message.reply_text("❌ First use /play with a YouTube URL.")
-
-    file_path = context.chat_data["last_song"]
-
-    await update.message.reply_text("🎧 Joining voice chat...")
-    await play_music(chat_id, file_path)
-
-    await update.message.reply_text("🎶 Now playing in VC!")
+    return await update.message.reply_text(
+        "❌ Voice Chat music is disabled on Render.\n"
+        "👉 Only download works (/play URL)"
+    )
 
 
 # -------------------- CHATGPT --------------------
@@ -136,7 +124,6 @@ async def chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
     reply = ai_reply(user_text)
     await update.message.reply_text(reply)
 
-
 # -------------------- AUTH --------------------
 async def test_restart(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_user.id != OWNER_ID:
@@ -144,13 +131,11 @@ async def test_restart(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("🔄 Restarting bot...")
     os._exit(1)
 
-
 # -------------------- TRACK USERS --------------------
 async def track_users(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat = update.effective_chat
     if chat.type in ["group", "supergroup"]:
         add_group_id(chat.id)
-
 
 # -------------------- ERROR --------------------
 async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE):
@@ -158,14 +143,8 @@ async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE):
     if isinstance(update, Update) and update.effective_message:
         await update.effective_message.reply_text("❌ Something went wrong!")
 
-
 # -------------------- MAIN --------------------
 def main():
-    # Start Music Client (PYROGRAM)
-    music_app.start()
-    pytgcalls.start()
-
-    # Start Telegram Bot
     app = Application.builder().token(BOT_TOKEN).build()
     app.add_error_handler(error_handler)
 
@@ -210,7 +189,7 @@ def main():
     # Group management
     register_group_management(app)
 
-    # MUSIC COMMANDS
+    # Music (download only)
     app.add_handler(CommandHandler("play", play))
     app.add_handler(CommandHandler("join", join))
 
@@ -219,7 +198,6 @@ def main():
 
     print("🚀 Combo Bot Started Successfully!")
     app.run_polling()
-
 
 if __name__ == "__main__":
     main()
